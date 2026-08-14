@@ -8,7 +8,7 @@
   - Acceptance: final advertised page fetched; JSON/CSV created; round trip works
   - Verify: `python -m unittest tests.test_fetchers tests.test_storage -v`
   - Files: `lottery_lab/fetchers.py`, `lottery_lab/storage.py`, related tests
-- [ ] Task 3: Generate deterministic valid candidate tickets
+- [x] Task 3: Generate deterministic valid candidate tickets
   - Acceptance: five distinct tickets per game; ranges/counts valid; seed repeats
   - Verify: `python -m unittest tests.test_simulation -v`
   - Files: `lottery_lab/simulation.py`, `tests/test_simulation.py`
