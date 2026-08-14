@@ -18,31 +18,31 @@ random candidates from the cached draw records.
 
 ### Phase 1: Contracts and parsing
 
-- [ ] Define draw/rule records and response parser tests.
-- [ ] Implement parsers and validation for both response formats.
+- [x] Define draw/rule records and response parser tests.
+- [x] Implement parsers and validation for both response formats.
 
 ### Checkpoint: Parsing
 
-- [ ] Parser tests pass for valid and malformed fixtures.
+- [x] Parser tests pass for valid and malformed fixtures.
 
 ### Phase 2: Fetch and storage
 
-- [ ] Add pagination tests and HTTP client with required headers/timeouts.
-- [ ] Add JSON/CSV storage and round-trip tests.
+- [x] Add pagination tests and HTTP client with required headers/timeouts.
+- [x] Add JSON/CSV storage and round-trip tests.
 
 ### Checkpoint: Data pipeline
 
-- [ ] Unit tests pass and live first-page probes parse correctly.
+- [x] Unit tests pass and live first-page probes parse correctly.
 
 ### Phase 3: Simulation and CLI
 
-- [ ] Add seeded ticket-generation tests and implementation.
-- [ ] Add CLI orchestration, disclaimer, README, and offline mode.
+- [x] Add seeded ticket-generation tests and implementation.
+- [x] Add CLI orchestration, disclaimer, README, and offline mode.
 
 ### Checkpoint: Complete
 
-- [ ] Full tests and compile check pass.
-- [ ] Online end-to-end run writes both histories and prints five tickets each.
+- [x] Full tests and compile check pass.
+- [x] Online end-to-end run writes both histories and prints five tickets each.
 
 ## Risks and Mitigations
 

@@ -44,11 +44,23 @@ class Draw:
             date.fromisoformat(date_text)
         except ValueError as exc:
             raise ValueError(f"issue {issue_text}: invalid date {date_text!r}") from exc
-        _validate_ball_set(issue_text, "primary", primary, rule.primary_count, rule.primary_max)
         _validate_ball_set(
-            issue_text, "secondary", secondary, rule.secondary_count, rule.secondary_max
+            issue_text, "primary", primary, rule.primary_count, rule.primary_max
         )
-        return cls(rule.code, issue_text, date_text, tuple(sorted(primary)), tuple(sorted(secondary)))
+        _validate_ball_set(
+            issue_text,
+            "secondary",
+            secondary,
+            rule.secondary_count,
+            rule.secondary_max,
+        )
+        return cls(
+            rule.code,
+            issue_text,
+            date_text,
+            tuple(sorted(primary)),
+            tuple(sorted(secondary)),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,4 +80,3 @@ def _validate_ball_set(
         raise ValueError(f"issue {issue}: duplicate {label} numbers")
     if any(number < 1 or number > maximum for number in numbers):
         raise ValueError(f"issue {issue}: {label} number outside 1..{maximum}")
-

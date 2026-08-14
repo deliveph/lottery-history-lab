@@ -43,18 +43,24 @@ def load_history(data_dir: Path, rule: GameRule) -> list[Draw]:
     if not path.exists():
         raise FileNotFoundError(f"history cache not found: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"invalid {rule.name} history cache: {path}")
     if payload.get("game") != rule.code or not isinstance(payload.get("draws"), list):
         raise ValueError(f"invalid {rule.name} history cache: {path}")
-    return [
-        Draw.create(
-            rule,
-            row.get("issue"),
-            row.get("draw_date"),
-            _stored_numbers(row.get("primary")),
-            _stored_numbers(row.get("secondary")),
+    draws = []
+    for row in payload["draws"]:
+        if not isinstance(row, dict):
+            raise ValueError(f"invalid draw row in {rule.name} history cache: {path}")
+        draws.append(
+            Draw.create(
+                rule,
+                row.get("issue"),
+                row.get("draw_date"),
+                _stored_numbers(row.get("primary")),
+                _stored_numbers(row.get("secondary")),
+            )
         )
-        for row in payload["draws"]
-    ]
+    return draws
 
 
 def _draw_dict(draw: Draw) -> dict[str, str]:

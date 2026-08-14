@@ -72,6 +72,27 @@ class ParserTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "upstream"):
             parse_dlt_page({"success": False, "errorCode": "999", "errorMessage": "failed"})
 
+    def test_rejects_number_outside_game_range(self) -> None:
+        payload = {
+            "success": True,
+            "errorCode": "0",
+            "value": {
+                "pageNo": 1,
+                "pages": 1,
+                "total": 1,
+                "list": [
+                    {
+                        "lotteryDrawNum": "bad-range",
+                        "lotteryDrawTime": "2026-08-12",
+                        "lotteryDrawResult": "03 04 07 12 36 01 02",
+                    }
+                ],
+            },
+        }
+
+        with self.assertRaisesRegex(ValueError, "outside 1..35"):
+            parse_dlt_page(payload)
+
 
 if __name__ == "__main__":
     unittest.main()

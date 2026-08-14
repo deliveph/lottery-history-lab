@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -27,6 +28,17 @@ class StorageTests(unittest.TestCase):
             self.assertTrue(paths.csv.exists())
             self.assertEqual(loaded, draws)
             self.assertIn("primary", paths.csv.read_text(encoding="utf-8-sig").splitlines()[0])
+
+    def test_rejects_non_object_draw_in_cache_with_clear_error(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            path = data_dir / "dlt_history.json"
+            path.write_text(
+                json.dumps({"game": "dlt", "draws": ["corrupt"]}), encoding="utf-8"
+            )
+
+            with self.assertRaisesRegex(ValueError, "draw row"):
+                load_history(data_dir, DLT_RULE)
 
 
 if __name__ == "__main__":
