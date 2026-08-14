@@ -1,9 +1,8 @@
 [project]
 name = "lottery-history-lab"
-version = "0.1.0"
+version = "0.2.0"
 description = "Fetch lottery history and generate entertainment-only candidate tickets"
 requires-python = ">=3.12"
 
 [tool.ruff]
 line-length = 100
-

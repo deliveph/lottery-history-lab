@@ -16,3 +16,7 @@
   - Acceptance: one command fetches and prints; offline reuses cache; disclaimer shown
   - Verify: unit suite, compile check, and real endpoint run
   - Files: `lottery_lab/cli.py`, `lottery_lab/__main__.py`, `README.md`
+- [x] Task 5: Add low-overlap coverage mode
+  - Acceptance: `--mode coverage` is reproducible and balances coverage across tickets
+  - Verify: simulation/CLI tests, compile check, and offline command run
+  - Files: `lottery_lab/simulation.py`, `lottery_lab/cli.py`, tests, `README.md`

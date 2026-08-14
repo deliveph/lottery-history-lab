@@ -46,8 +46,33 @@ class CliTests(unittest.TestCase):
             self.assertIn("双色球候选号码（5 组）", text)
             self.assertEqual(text.count("前区"), 5)
             self.assertEqual(text.count("红球"), 5)
+            self.assertIn("模式 历史加权", text)
             self.assertIn("历史统计不能预测下一期", text)
             text.encode("gbk")
+
+    def test_coverage_mode_is_available_from_offline_cli(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            save_history(data_dir, DLT_RULE, history(DLT_RULE))
+            save_history(data_dir, SSQ_RULE, history(SSQ_RULE))
+            output = io.StringIO()
+
+            with contextlib.redirect_stdout(output):
+                exit_code = main(
+                    [
+                        "generate",
+                        "--offline",
+                        "--mode",
+                        "coverage",
+                        "--data-dir",
+                        str(data_dir),
+                        "--seed",
+                        "42",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn("模式 低重叠覆盖", output.getvalue())
 
 
 if __name__ == "__main__":

@@ -25,6 +25,9 @@ python -m lottery_lab run --seed 20260814
 # 不联网，直接用上次保存的数据
 python -m lottery_lab generate --offline --seed 20260814
 
+# 使用低重叠覆盖模式生成各 5 组
+python -m lottery_lab generate --offline --mode coverage --seed 20260814
+
 # 改为各生成 8 组，并指定数据目录
 python -m lottery_lab run --count 8 --data-dir D:\lottery-data
 ```
@@ -37,7 +40,9 @@ python -m lottery_lab run --count 8 --data-dir D:\lottery-data
 CSV 使用 UTF-8 BOM，方便直接用 Excel 打开。程序只在明确执行 `generate --offline`
 时复用缓存；在线抓取失败会报告错误，不会悄悄把旧数据当成新数据。
 
-## 候选模型
+## 生成模式
+
+### `weighted`（默认）
 
 每个号码的抽样权重由三项组成：
 
@@ -48,6 +53,16 @@ CSV 使用 UTF-8 BOM，方便直接用 Excel 打开。程序只在明确执行 `
 三项分别按号码池平均值归一化并做平滑，确保每个合法号码始终有非零概率；每一注
 使用加权不放回抽样，因此同一区内不会重复。这个方法只是把“热号、近期号、遗漏号”
 组合成一种透明的随机策略，不是统计预测模型。
+
+### `coverage`（低重叠覆盖）
+
+在固定注数内平衡每个号码的使用次数，并对重复号码对、明显连号、等差图案和极端
+奇偶分布增加惩罚。默认 5 注时：
+
+- 大乐透覆盖 25 个不同前区号码、10 个不同后区号码
+- 双色球覆盖 30 个不同红球号码、5 个不同蓝球号码
+
+该模式优化的是多注分散度和小奖覆盖结构，不会提高 5 注一等奖的总概率。
 
 ## 数据源
 

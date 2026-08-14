@@ -64,6 +64,9 @@ def parse_numbers(value: str, expected: int) -> tuple[int, ...]:
 - History is written to JSON and CSV under `data/`.
 - The CLI emits exactly five valid, distinct tickets per lottery by default.
 - `--offline` works from the saved JSON files and `--seed` is reproducible.
+- `--mode coverage` balances ball usage across a fixed ticket budget, minimizes
+  obvious patterns, and maximizes unique ball coverage without claiming better
+  jackpot odds.
 - Tests, compile check, and one real online run pass.
 
 ## Open Questions

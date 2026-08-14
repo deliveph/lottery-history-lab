@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .fetchers import fetch_dlt_history, fetch_ssq_history
 from .models import DLT_RULE, SSQ_RULE, Draw, GameRule
-from .simulation import Ticket, generate_tickets
+from .simulation import Ticket, generate_coverage_tickets, generate_tickets
 from .storage import load_history, save_history
 
 
@@ -43,8 +43,11 @@ def main(argv: list[str] | None = None) -> int:
         print()
         for rule in (DLT_RULE, SSQ_RULE):
             draws = histories[rule.code]
-            tickets = generate_tickets(rule, draws, count=args.count, seed=args.seed)
-            _print_tickets(rule, draws, tickets)
+            if args.mode == "coverage":
+                tickets = generate_coverage_tickets(rule, count=args.count, seed=args.seed)
+            else:
+                tickets = generate_tickets(rule, draws, count=args.count, seed=args.seed)
+            _print_tickets(rule, draws, tickets, mode=args.mode)
         print(f"\n提示：{DISCLAIMER}")
         return 0
     except (OSError, ValueError, RuntimeError) as exc:
@@ -56,6 +59,12 @@ def _common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--count", type=_positive_int, default=5, help="每种彩票生成组数（默认 5）")
     parser.add_argument("--seed", type=int, help="可选随机种子，用于复现相同结果")
     parser.add_argument("--data-dir", default="data", help="历史数据目录（默认 ./data）")
+    parser.add_argument(
+        "--mode",
+        choices=("weighted", "coverage"),
+        default="weighted",
+        help="生成模式：历史加权 weighted 或低重叠覆盖 coverage",
+    )
 
 
 def _positive_int(value: str) -> int:
@@ -78,11 +87,14 @@ def _refresh(data_dir: Path) -> dict[str, list[Draw]]:
     return {DLT_RULE.code: dlt_draws, SSQ_RULE.code: ssq_draws}
 
 
-def _print_tickets(rule: GameRule, draws: list[Draw], tickets: list[Ticket]) -> None:
+def _print_tickets(
+    rule: GameRule, draws: list[Draw], tickets: list[Ticket], *, mode: str
+) -> None:
     latest = draws[0]
+    mode_label = "低重叠覆盖" if mode == "coverage" else "历史加权"
     print(
         f"\n{rule.name}候选号码（{len(tickets)} 组）"
-        f"｜历史 {len(draws)} 期｜最新 {latest.issue}（{latest.draw_date}）"
+        f"｜模式 {mode_label}｜历史 {len(draws)} 期｜最新 {latest.issue}（{latest.draw_date}）"
     )
     first_label, second_label = ("前区", "后区") if rule.code == "dlt" else ("红球", "蓝球")
     for index, ticket in enumerate(tickets, start=1):

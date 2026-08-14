@@ -1,7 +1,11 @@
 import unittest
 
-from lottery_lab.models import DLT_RULE, Draw
-from lottery_lab.simulation import generate_tickets, score_numbers
+from lottery_lab.models import DLT_RULE, SSQ_RULE, Draw
+from lottery_lab.simulation import (
+    generate_coverage_tickets,
+    generate_tickets,
+    score_numbers,
+)
 
 
 def sample_history() -> list[Draw]:
@@ -50,6 +54,17 @@ class SimulationTests(unittest.TestCase):
     def test_rejects_empty_history(self) -> None:
         with self.assertRaisesRegex(ValueError, "history"):
             generate_tickets(DLT_RULE, [], count=5, seed=1)
+
+    def test_coverage_mode_balances_five_ticket_portfolio(self) -> None:
+        dlt = generate_coverage_tickets(DLT_RULE, count=5, seed=20260814)
+        ssq = generate_coverage_tickets(SSQ_RULE, count=5, seed=20260814)
+
+        self.assertEqual(dlt, generate_coverage_tickets(DLT_RULE, count=5, seed=20260814))
+        self.assertEqual(len(set(dlt)), 5)
+        self.assertEqual(len({number for ticket in dlt for number in ticket.primary}), 25)
+        self.assertEqual(len({number for ticket in dlt for number in ticket.secondary}), 10)
+        self.assertEqual(len({number for ticket in ssq for number in ticket.primary}), 30)
+        self.assertEqual(len({number for ticket in ssq for number in ticket.secondary}), 5)
 
 
 if __name__ == "__main__":
