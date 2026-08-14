@@ -1,6 +1,6 @@
 # Tasks
 
-- [ ] Task 1: Parse and validate both API response formats
+- [x] Task 1: Parse and validate both API response formats
   - Acceptance: normalized valid records; malformed counts/ranges rejected
   - Verify: `python -m unittest tests.test_parsers -v`
   - Files: `lottery_lab/models.py`, `lottery_lab/parsers.py`, `tests/test_parsers.py`
