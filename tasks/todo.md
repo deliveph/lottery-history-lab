@@ -4,7 +4,7 @@
   - Acceptance: normalized valid records; malformed counts/ranges rejected
   - Verify: `python -m unittest tests.test_parsers -v`
   - Files: `lottery_lab/models.py`, `lottery_lab/parsers.py`, `tests/test_parsers.py`
-- [ ] Task 2: Paginate, deduplicate, and persist complete history
+- [x] Task 2: Paginate, deduplicate, and persist complete history
   - Acceptance: final advertised page fetched; JSON/CSV created; round trip works
   - Verify: `python -m unittest tests.test_fetchers tests.test_storage -v`
   - Files: `lottery_lab/fetchers.py`, `lottery_lab/storage.py`, related tests
