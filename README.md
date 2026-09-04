@@ -6,6 +6,12 @@
 
 > **重要：仅供娱乐。开奖是独立随机事件，历史统计不能预测下一期，也不能提高中奖概率。**
 
+## 对话与实验记录
+
+按北京时间拆分的需求、号码和核奖记录见
+[`docs/conversations/README.md`](docs/conversations/README.md)。后续同一天追加到同一文件，
+跨天新建日志，避免单个上下文或文档持续膨胀。
+
 ## 环境
 
 - Windows、macOS 或 Linux
@@ -27,6 +33,10 @@ python -m lottery_lab generate --offline --seed 20260814
 
 # 使用低重叠覆盖模式生成各 5 组
 python -m lottery_lab generate --offline --mode coverage --seed 20260814
+
+# 使用易经八卦娱乐模式，并分别指定目标日期
+python -m lottery_lab generate --offline --mode iching `
+  --dlt-date 2026-08-31 --ssq-date 2026-09-01
 
 # 改为各生成 8 组，并指定数据目录
 python -m lottery_lab run --count 8 --data-dir D:\lottery-data
@@ -63,6 +73,20 @@ CSV 使用 UTF-8 BOM，方便直接用 Excel 打开。程序只在明确执行 `
 - 双色球覆盖 30 个不同红球号码、5 个不同蓝球号码
 
 该模式优化的是多注分散度和小奖覆盖结构，不会提高 5 注一等奖的总概率。
+
+### `iching`（易经八卦娱乐模式）
+
+根据目标年月日与缓存中的下一期号，计算上卦、下卦和动爻，再使用八卦序数、
+五行尾数及变爻轮转形成抽样权重。程序同时平衡 5 注之间的号码使用次数，结果由
+目标日期和期号确定，可重复生成：
+
+```powershell
+python -m lottery_lab generate --offline --mode iching `
+  --dlt-date 2026-08-31 --ssq-date 2026-09-01
+```
+
+这是自定义的娱乐性数字映射，不是传统术数断语，也没有统计预测依据。`iching`
+模式不会使用 `--seed`；相同目标日期、期号和游戏规则会产生相同结果。
 
 ## 数据源
 

@@ -74,6 +74,35 @@ class CliTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertIn("模式 低重叠覆盖", output.getvalue())
 
+    def test_iching_mode_accepts_separate_target_dates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            save_history(data_dir, DLT_RULE, history(DLT_RULE))
+            save_history(data_dir, SSQ_RULE, history(SSQ_RULE))
+            output = io.StringIO()
+
+            with contextlib.redirect_stdout(output):
+                exit_code = main(
+                    [
+                        "generate",
+                        "--offline",
+                        "--mode",
+                        "iching",
+                        "--dlt-date",
+                        "2026-08-31",
+                        "--ssq-date",
+                        "2026-09-01",
+                        "--data-dir",
+                        str(data_dir),
+                    ]
+                )
+
+            text = output.getvalue()
+            self.assertEqual(exit_code, 0)
+            self.assertIn("模式 易经八卦", text)
+            self.assertIn("目标 2026-08-31", text)
+            self.assertIn("目标 2026-09-01", text)
+
 
 if __name__ == "__main__":
     unittest.main()

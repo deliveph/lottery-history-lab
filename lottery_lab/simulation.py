@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
+import math
 import random
 from collections import Counter
 from dataclasses import dataclass
+from datetime import date
 from itertools import combinations
 from typing import Literal
 
@@ -16,6 +19,25 @@ BallField = Literal["primary", "secondary"]
 class Ticket:
     primary: tuple[int, ...]
     secondary: tuple[int, ...]
+
+
+_TRIGRAM_ELEMENTS = {
+    1: "metal",
+    2: "metal",
+    3: "fire",
+    4: "wood",
+    5: "wood",
+    6: "water",
+    7: "earth",
+    8: "earth",
+}
+_ELEMENT_TAILS = {
+    "water": {1, 6},
+    "fire": {2, 7},
+    "wood": {3, 8},
+    "metal": {4, 9},
+    "earth": {0, 5},
+}
 
 
 def score_numbers(
@@ -113,6 +135,133 @@ def generate_coverage_tickets(
     if best_tickets is None or len(set(best_tickets)) != count:
         raise RuntimeError(f"could not generate {count} distinct coverage tickets")
     return best_tickets
+
+
+def generate_iching_tickets(
+    rule: GameRule,
+    *,
+    target_date: str,
+    issue: str,
+    count: int = 5,
+) -> list[Ticket]:
+    """Generate deterministic entertainment-only tickets from a date-based bagua mapping."""
+    if count < 1:
+        raise ValueError("ticket count must be positive")
+    try:
+        parsed_date = date.fromisoformat(target_date)
+    except ValueError as exc:
+        raise ValueError(f"invalid target date: {target_date!r}") from exc
+    try:
+        issue_number = int(issue)
+    except ValueError as exc:
+        raise ValueError(f"invalid issue: {issue!r}") from exc
+    if issue_number < 1:
+        raise ValueError(f"invalid issue: {issue!r}")
+
+    upper, lower, moving = _iching_reading(parsed_date, issue_number)
+    seed_material = (
+        f"iching|{rule.code}|{target_date}|{issue_number}|{upper}|{lower}|{moving}"
+    )
+    seed = int.from_bytes(hashlib.sha256(seed_material.encode()).digest()[:8], "big")
+    rng = random.Random(seed)
+    best_tickets: list[Ticket] | None = None
+    best_score = float("-inf")
+    for _ in range(1_000):
+        primary = _iching_groups(
+            rule.primary_max, rule.primary_count, count, upper, lower, moving, rng
+        )
+        secondary = _iching_groups(
+            rule.secondary_max, rule.secondary_count, count, lower, upper, moving, rng
+        )
+        tickets = [
+            Ticket(first, second)
+            for first, second in zip(primary, secondary, strict=True)
+        ]
+        score = _iching_portfolio_score(tickets, upper, lower, moving)
+        if len(set(tickets)) == count and score > best_score:
+            best_tickets, best_score = tickets, score
+    if best_tickets is None:
+        raise RuntimeError(f"could not generate {count} distinct iching tickets")
+    return best_tickets
+
+
+def _iching_reading(target: date, issue_number: int) -> tuple[int, int, int]:
+    date_total = target.year + target.month + target.day
+    return (
+        _one_based_remainder(date_total, 8),
+        _one_based_remainder(date_total + issue_number, 8),
+        _one_based_remainder(date_total + issue_number, 6),
+    )
+
+
+def _one_based_remainder(value: int, modulus: int) -> int:
+    remainder = value % modulus
+    return modulus if remainder == 0 else remainder
+
+
+def _iching_groups(
+    pool_max: int,
+    group_size: int,
+    count: int,
+    upper: int,
+    lower: int,
+    moving: int,
+    rng: random.Random,
+) -> list[tuple[int, ...]]:
+    usage = Counter({number: 0 for number in range(1, pool_max + 1)})
+    groups = []
+    for group_index in range(1, count + 1):
+        selected: list[int] = []
+        for _ in range(group_size):
+            available = [number for number in usage if number not in selected]
+            minimum_usage = min(usage[number] for number in available)
+            candidates = [
+                number for number in available if usage[number] == minimum_usage
+            ]
+            scores = _iching_number_scores(
+                candidates, upper, lower, moving, group_index
+            )
+            selected.append(rng.choices(candidates, weights=scores, k=1)[0])
+        usage.update(selected)
+        groups.append(tuple(sorted(selected)))
+    return groups
+
+
+def _iching_number_scores(
+    numbers: list[int], upper: int, lower: int, moving: int, group_index: int
+) -> list[float]:
+    turning = _one_based_remainder(upper + lower + moving + group_index, 8)
+    upper_tails = _ELEMENT_TAILS[_TRIGRAM_ELEMENTS[upper]]
+    lower_tails = _ELEMENT_TAILS[_TRIGRAM_ELEMENTS[lower]]
+    turning_tails = _ELEMENT_TAILS[_TRIGRAM_ELEMENTS[turning]]
+    scores = []
+    for number in numbers:
+        trigram = _one_based_remainder(number, 8)
+        score = 1.0
+        score *= 2.10 if trigram == upper else 1.0
+        score *= 1.85 if trigram == lower else 1.0
+        score *= 1.45 if trigram == turning else 1.0
+        score *= 1.35 if number % 10 in upper_tails else 1.0
+        score *= 1.25 if number % 10 in lower_tails else 1.0
+        score *= 1.12 if number % 10 in turning_tails else 1.0
+        score *= 1.30 if _one_based_remainder(number, 6) == moving else 1.0
+        scores.append(score)
+    return scores
+
+
+def _iching_portfolio_score(
+    tickets: list[Ticket], upper: int, lower: int, moving: int
+) -> float:
+    quality = 0.0
+    for group_index, ticket in enumerate(tickets, start=1):
+        primary_scores = _iching_number_scores(
+            list(ticket.primary), upper, lower, moving, group_index
+        )
+        secondary_scores = _iching_number_scores(
+            list(ticket.secondary), lower, upper, moving, group_index
+        )
+        quality += sum(math.log(score) for score in primary_scores + secondary_scores)
+    return quality - _portfolio_penalty(tickets)
 
 
 def _relative(values: dict[int, int]) -> dict[int, float]:
