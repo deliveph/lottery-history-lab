@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .fetchers import fetch_dlt_history, fetch_ssq_history
 from .models import DLT_RULE, SSQ_RULE, Draw, GameRule
 from .simulation import (
+    IChingContext,
     Ticket,
     generate_coverage_tickets,
     generate_iching_tickets,
     generate_tickets,
+    iching_context_summary,
 )
 from .storage import load_history, save_history
 
@@ -19,6 +22,10 @@ DISCLAIMER = (
     "仅供娱乐：开奖是独立随机事件，历史统计不能预测下一期，"
     "玄学映射也不能提高中奖概率。"
 )
+DLT_DRAW_TIME = "21:25"
+SSQ_DRAW_TIME = "21:15"
+DIRECTIONS = ("北", "东北", "东", "东南", "南", "西南", "西", "西北", "中")
+BEIJING_TIMEZONE = timezone(timedelta(hours=8))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,9 +56,13 @@ def main(argv: list[str] | None = None) -> int:
                 SSQ_RULE.code: load_history(data_dir, SSQ_RULE),
             }
         print()
+        cast_at = args.cast_at
+        if args.mode == "iching" and cast_at is None:
+            cast_at = datetime.now(BEIJING_TIMEZONE).isoformat(timespec="seconds")
         for rule in (DLT_RULE, SSQ_RULE):
             draws = histories[rule.code]
             target_date = None
+            iching_context = None
             if args.mode == "coverage":
                 tickets = generate_coverage_tickets(rule, count=args.count, seed=args.seed)
             elif args.mode == "iching":
@@ -59,16 +70,36 @@ def main(argv: list[str] | None = None) -> int:
                 if target_date is None:
                     raise ValueError(f"iching 模式缺少 {rule.name} 目标日期")
                 next_issue = str(int(draws[0].issue) + 1).zfill(len(draws[0].issue))
+                draw_time = (
+                    args.dlt_draw_time if rule.code == "dlt" else args.ssq_draw_time
+                )
+                iching_context = IChingContext.create(
+                    draw_time=draw_time,
+                    cast_at=cast_at,
+                    lunar_birth_date=args.birth_lunar_date,
+                    birth_time=args.birth_time,
+                    location=args.location,
+                    latitude=args.latitude,
+                    longitude=args.longitude,
+                    direction=args.direction,
+                    wealth_direction=args.wealth_direction,
+                )
                 tickets = generate_iching_tickets(
                     rule,
                     target_date=target_date,
                     issue=next_issue,
                     count=args.count,
+                    context=iching_context,
                 )
             else:
                 tickets = generate_tickets(rule, draws, count=args.count, seed=args.seed)
             _print_tickets(
-                rule, draws, tickets, mode=args.mode, target_date=target_date
+                rule,
+                draws,
+                tickets,
+                mode=args.mode,
+                target_date=target_date,
+                iching_context=iching_context,
             )
         print(f"\n提示：{DISCLAIMER}")
         return 0
@@ -89,6 +120,28 @@ def _common_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--dlt-date", help="iching 模式的大乐透目标日期（YYYY-MM-DD）")
     parser.add_argument("--ssq-date", help="iching 模式的双色球目标日期（YYYY-MM-DD）")
+    parser.add_argument(
+        "--dlt-draw-time",
+        default=DLT_DRAW_TIME,
+        help=f"大乐透开奖时刻（默认官方直播时间 {DLT_DRAW_TIME}）",
+    )
+    parser.add_argument(
+        "--ssq-draw-time",
+        default=SSQ_DRAW_TIME,
+        help=f"双色球开奖时刻（默认官方直播时间 {SSQ_DRAW_TIME}）",
+    )
+    parser.add_argument("--cast-at", help="实际起卦时刻（ISO 8601；默认当前北京时间）")
+    parser.add_argument("--birth-lunar-date", help="农历生日（YYYY-MM-DD）")
+    parser.add_argument("--birth-time", help="出生时刻（HH:MM；未提供则不构成完整八字输入）")
+    parser.add_argument("--location", default="未指定", help="起卦地点名称")
+    parser.add_argument("--latitude", type=float, help="起卦地点纬度，需与经度同时提供")
+    parser.add_argument("--longitude", type=float, help="起卦地点经度，需与纬度同时提供")
+    parser.add_argument(
+        "--direction", choices=DIRECTIONS, default="中", help="起卦朝向（默认 中）"
+    )
+    parser.add_argument(
+        "--wealth-direction", choices=DIRECTIONS, help="财位；默认按目标日期卦象映射"
+    )
 
 
 def _positive_int(value: str) -> int:
@@ -118,6 +171,7 @@ def _print_tickets(
     *,
     mode: str,
     target_date: str | None = None,
+    iching_context: IChingContext | None = None,
 ) -> None:
     latest = draws[0]
     mode_label = {
@@ -131,6 +185,8 @@ def _print_tickets(
         f"｜模式 {mode_label}{target_label}"
         f"｜历史 {len(draws)} 期｜最新 {latest.issue}（{latest.draw_date}）"
     )
+    if iching_context is not None and target_date is not None:
+        print(f"起卦参数｜{iching_context_summary(iching_context, target_date=target_date)}")
     first_label, second_label = ("前区", "后区") if rule.code == "dlt" else ("红球", "蓝球")
     for index, ticket in enumerate(tickets, start=1):
         primary = " ".join(f"{number:02d}" for number in ticket.primary)

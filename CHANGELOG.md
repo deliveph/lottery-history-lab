@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add validated context-aware inputs to `iching`: official draw time, casting
+  timestamp, lunar birth date/time, location, coordinates, direction, and an
+  optional wealth direction.
+- Print every normalized context value so contextual runs are auditable and
+  reproducible.
+
+### Changed
+
+- Use `21:25` for Super Lotto and `21:15` for Double Color Ball as the default
+  draw times in contextual I Ching generation.
+
 ## 0.2.0 - 2026-08-14
 
 ### Added

@@ -67,8 +67,17 @@ def parse_numbers(value: str, expected: int) -> tuple[int, ...]:
 - `--mode coverage` balances ball usage across a fixed ticket budget, minimizes
   obvious patterns, and maximizes unique ball coverage without claiming better
   jackpot odds.
+- `--mode iching` can optionally include a lunar birth date/time, user-supplied
+  location and coordinates, facing direction, target-date wealth direction,
+  official draw time, and an explicit casting timestamp. Every supplied value
+  changes the entertainment mapping and is printed so a run can be reproduced.
+- Existing direct callers that omit the enhanced context retain the original
+  date-and-issue-only deterministic mapping.
 - Tests, compile check, and one real online run pass.
 
 ## Open Questions
 
-None. A web UI and scheduled refresh are intentionally out of scope.
+The supplied lunar birth date has no birth time, so it is not a complete
+four-pillar BaZi input. The CLI accepts an optional birth time and labels a
+missing value explicitly. A web UI and scheduled refresh are intentionally out
+of scope.

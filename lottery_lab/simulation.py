@@ -5,7 +5,7 @@ import math
 import random
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, time
 from itertools import combinations
 from typing import Literal
 
@@ -19,6 +19,103 @@ BallField = Literal["primary", "secondary"]
 class Ticket:
     primary: tuple[int, ...]
     secondary: tuple[int, ...]
+
+
+_DIRECTION_VALUES = {
+    "北": 1,
+    "东北": 2,
+    "东": 3,
+    "东南": 4,
+    "南": 5,
+    "西南": 6,
+    "西": 7,
+    "西北": 8,
+    "中": 9,
+}
+_TRIGRAM_DIRECTIONS = {
+    1: "西北",
+    2: "西",
+    3: "南",
+    4: "东",
+    5: "东南",
+    6: "北",
+    7: "东北",
+    8: "西南",
+}
+_EARTHLY_BRANCHES = (
+    "子",
+    "丑",
+    "寅",
+    "卯",
+    "辰",
+    "巳",
+    "午",
+    "未",
+    "申",
+    "酉",
+    "戌",
+    "亥",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class IChingContext:
+    """Validated inputs for the optional context-aware entertainment mapping."""
+
+    draw_time: str
+    cast_at: str
+    lunar_birth_date: str | None = None
+    birth_time: str | None = None
+    location: str = "未指定"
+    latitude: float | None = None
+    longitude: float | None = None
+    direction: str = "中"
+    wealth_direction: str | None = None
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        draw_time: str,
+        cast_at: str,
+        lunar_birth_date: str | None = None,
+        birth_time: str | None = None,
+        location: str = "未指定",
+        latitude: float | None = None,
+        longitude: float | None = None,
+        direction: str = "中",
+        wealth_direction: str | None = None,
+    ) -> IChingContext:
+        normalized_draw_time = _normalize_clock(draw_time, "draw time")
+        normalized_birth_time = (
+            _normalize_clock(birth_time, "birth time") if birth_time else None
+        )
+        normalized_cast_at = _normalize_datetime(cast_at)
+        normalized_birth_date = (
+            _normalize_lunar_date(lunar_birth_date) if lunar_birth_date else None
+        )
+        if (latitude is None) != (longitude is None):
+            raise ValueError("latitude and longitude must be supplied together")
+        if latitude is not None and not -90 <= latitude <= 90:
+            raise ValueError("latitude must be within -90..90")
+        if longitude is not None and not -180 <= longitude <= 180:
+            raise ValueError("longitude must be within -180..180")
+        if direction not in _DIRECTION_VALUES:
+            raise ValueError(f"invalid direction: {direction!r}")
+        if wealth_direction is not None and wealth_direction not in _DIRECTION_VALUES:
+            raise ValueError(f"invalid wealth direction: {wealth_direction!r}")
+        normalized_location = location.strip() or "未指定"
+        return cls(
+            draw_time=normalized_draw_time,
+            cast_at=normalized_cast_at,
+            lunar_birth_date=normalized_birth_date,
+            birth_time=normalized_birth_time,
+            location=normalized_location,
+            latitude=latitude,
+            longitude=longitude,
+            direction=direction,
+            wealth_direction=wealth_direction,
+        )
 
 
 _TRIGRAM_ELEMENTS = {
@@ -143,6 +240,7 @@ def generate_iching_tickets(
     target_date: str,
     issue: str,
     count: int = 5,
+    context: IChingContext | None = None,
 ) -> list[Ticket]:
     """Generate deterministic entertainment-only tickets from a date-based bagua mapping."""
     if count < 1:
@@ -158,9 +256,11 @@ def generate_iching_tickets(
     if issue_number < 1:
         raise ValueError(f"invalid issue: {issue!r}")
 
-    upper, lower, moving = _iching_reading(parsed_date, issue_number)
+    upper, lower, moving = _iching_reading(parsed_date, issue_number, context)
+    context_material = _iching_context_material(context, parsed_date)
     seed_material = (
         f"iching|{rule.code}|{target_date}|{issue_number}|{upper}|{lower}|{moving}"
+        f"|{context_material}"
     )
     seed = int.from_bytes(hashlib.sha256(seed_material.encode()).digest()[:8], "big")
     rng = random.Random(seed)
@@ -185,13 +285,150 @@ def generate_iching_tickets(
     return best_tickets
 
 
-def _iching_reading(target: date, issue_number: int) -> tuple[int, int, int]:
+def _iching_reading(
+    target: date, issue_number: int, context: IChingContext | None = None
+) -> tuple[int, int, int]:
     date_total = target.year + target.month + target.day
+    if context is not None:
+        birth_value, time_value, place_value, direction_value = _context_values(
+            context, target
+        )
+        upper_source = date_total + birth_value + place_value + direction_value
+        lower_source = date_total + issue_number + time_value + place_value
+        return (
+            _one_based_remainder(upper_source, 8),
+            _one_based_remainder(lower_source, 8),
+            _one_based_remainder(upper_source + lower_source, 6),
+        )
     return (
         _one_based_remainder(date_total, 8),
         _one_based_remainder(date_total + issue_number, 8),
         _one_based_remainder(date_total + issue_number, 6),
     )
+
+
+def iching_context_summary(context: IChingContext, *, target_date: str) -> str:
+    """Return the normalized inputs used by a contextual I Ching run."""
+    target = date.fromisoformat(target_date)
+    birth = context.lunar_birth_date or "未提供"
+    if context.birth_time:
+        birth_time = f"{context.birth_time}（{_earthly_branch(context.birth_time)}时）"
+    else:
+        birth_time = "未提供（非完整八字）"
+    if context.latitude is None:
+        location = context.location
+    else:
+        location = (
+            f"{context.location}（{context.latitude:.4f}, {context.longitude:.4f}）"
+        )
+    wealth = context.wealth_direction or _wealth_direction(target)
+    return (
+        f"开奖 {context.draw_time}（{_earthly_branch(context.draw_time)}时）"
+        f"｜起卦时间 {context.cast_at}"
+        f"｜农历生辰 {birth}｜出生时辰 {birth_time}"
+        f"｜定位 {location}｜方位 {context.direction}"
+        f"｜财位 {wealth}（娱乐卦象映射）"
+    )
+
+
+def _normalize_clock(value: str, label: str) -> str:
+    try:
+        parsed = time.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"invalid {label}: {value!r}") from exc
+    return parsed.strftime("%H:%M")
+
+
+def _normalize_datetime(value: str) -> str:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"invalid cast time: {value!r}") from exc
+    return parsed.isoformat(timespec="seconds")
+
+
+def _normalize_lunar_date(value: str) -> str:
+    parts = value.split("-")
+    if len(parts) != 3:
+        raise ValueError(f"invalid lunar birth date: {value!r}")
+    try:
+        year, month, day_value = (int(part) for part in parts)
+    except ValueError as exc:
+        raise ValueError(f"invalid lunar birth date: {value!r}") from exc
+    if year < 1 or not 1 <= month <= 12 or not 1 <= day_value <= 30:
+        raise ValueError(f"invalid lunar birth date: {value!r}")
+    return f"{year:04d}-{month:02d}-{day_value:02d}"
+
+
+def _earthly_branch(clock: str) -> str:
+    hour = int(clock[:2])
+    branch_index = 0 if hour == 23 else (hour + 1) // 2
+    return _EARTHLY_BRANCHES[branch_index]
+
+
+def _wealth_direction(target: date) -> str:
+    date_total = target.year + target.month + target.day
+    return _TRIGRAM_DIRECTIONS[_one_based_remainder(date_total, 8)]
+
+
+def _context_values(
+    context: IChingContext, target: date
+) -> tuple[int, int, int, int]:
+    birth_value = 0
+    if context.lunar_birth_date:
+        birth_value = sum(int(part) for part in context.lunar_birth_date.split("-"))
+    if context.birth_time:
+        birth_value += _clock_minutes(context.birth_time) + _branch_index(
+            context.birth_time
+        )
+
+    cast = datetime.fromisoformat(context.cast_at)
+    time_value = (
+        _clock_minutes(context.draw_time)
+        + _branch_index(context.draw_time)
+        + cast.year
+        + cast.month
+        + cast.day
+        + cast.hour * 60
+        + cast.minute
+    )
+    location_hash = hashlib.sha256(context.location.encode()).digest()
+    place_value = int.from_bytes(location_hash[:4], "big")
+    if context.latitude is not None and context.longitude is not None:
+        place_value += round((context.latitude + 90) * 10_000)
+        place_value += round((context.longitude + 180) * 10_000)
+
+    wealth = context.wealth_direction or _wealth_direction(target)
+    direction_value = _DIRECTION_VALUES[context.direction] + _DIRECTION_VALUES[wealth]
+    return birth_value, time_value, place_value, direction_value
+
+
+def _iching_context_material(context: IChingContext | None, target: date) -> str:
+    if context is None:
+        return "legacy"
+    wealth = context.wealth_direction or _wealth_direction(target)
+    return "|".join(
+        (
+            context.draw_time,
+            context.cast_at,
+            context.lunar_birth_date or "",
+            context.birth_time or "",
+            context.location,
+            "" if context.latitude is None else f"{context.latitude:.6f}",
+            "" if context.longitude is None else f"{context.longitude:.6f}",
+            context.direction,
+            wealth,
+        )
+    )
+
+
+def _clock_minutes(clock: str) -> int:
+    hour, minute = (int(part) for part in clock.split(":"))
+    return hour * 60 + minute
+
+
+def _branch_index(clock: str) -> int:
+    return _EARTHLY_BRANCHES.index(_earthly_branch(clock)) + 1
 
 
 def _one_based_remainder(value: int, modulus: int) -> int:

@@ -103,6 +103,51 @@ class CliTests(unittest.TestCase):
             self.assertIn("目标 2026-08-31", text)
             self.assertIn("目标 2026-09-01", text)
 
+    def test_iching_mode_accepts_and_prints_enhanced_context(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            save_history(data_dir, DLT_RULE, history(DLT_RULE))
+            save_history(data_dir, SSQ_RULE, history(SSQ_RULE))
+            output = io.StringIO()
+
+            with contextlib.redirect_stdout(output):
+                exit_code = main(
+                    [
+                        "generate",
+                        "--offline",
+                        "--mode",
+                        "iching",
+                        "--dlt-date",
+                        "2026-09-07",
+                        "--ssq-date",
+                        "2026-09-08",
+                        "--data-dir",
+                        str(data_dir),
+                        "--birth-lunar-date",
+                        "1993-01-12",
+                        "--cast-at",
+                        "2026-09-07T10:30:00+08:00",
+                        "--location",
+                        "上海市",
+                        "--latitude",
+                        "31.2304",
+                        "--longitude",
+                        "121.4737",
+                        "--direction",
+                        "东南",
+                    ]
+                )
+
+            text = output.getvalue()
+            self.assertEqual(exit_code, 0)
+            self.assertIn("开奖 21:25（亥时）", text)
+            self.assertIn("开奖 21:15（亥时）", text)
+            self.assertIn("农历生辰 1993-01-12", text)
+            self.assertIn("起卦时间 2026-09-07T10:30:00+08:00", text)
+            self.assertIn("定位 上海市（31.2304, 121.4737）", text)
+            self.assertIn("方位 东南", text)
+            self.assertIn("财位", text)
+
 
 if __name__ == "__main__":
     unittest.main()

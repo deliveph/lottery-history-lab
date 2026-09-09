@@ -20,3 +20,8 @@
   - Acceptance: `--mode coverage` is reproducible and balances coverage across tickets
   - Verify: simulation/CLI tests, compile check, and offline command run
   - Files: `lottery_lab/simulation.py`, `lottery_lab/cli.py`, tests, `README.md`
+- [x] Task 6: Add contextual inputs to the I Ching entertainment mode
+  - Acceptance: draw time, casting time, lunar birth input, location, coordinates,
+    direction, and wealth direction affect the mapping and appear in output
+  - Verify: simulation/CLI tests, full suite, compile check, and offline command run
+  - Files: `lottery_lab/simulation.py`, `lottery_lab/cli.py`, tests, `README.md`

@@ -44,6 +44,17 @@ random candidates from the cached draw records.
 - [x] Full tests and compile check pass.
 - [x] Online end-to-end run writes both histories and prints five tickets each.
 
+### Phase 4: Context-aware I Ching entertainment mode
+
+- [x] Add a validated, backward-compatible context contract.
+- [x] Make all supplied context fields affect the reading and random seed.
+- [x] Add CLI options, official default draw times, and an auditable summary.
+- [x] Document the distinction between lunar birth input and complete BaZi.
+
+### Checkpoint: Context-aware mode
+
+- [x] Context-specific tests, full suite, compile check, and offline CLI run pass.
+
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |

@@ -2,9 +2,11 @@ import unittest
 
 from lottery_lab.models import DLT_RULE, SSQ_RULE, Draw
 from lottery_lab.simulation import (
+    IChingContext,
     generate_coverage_tickets,
     generate_iching_tickets,
     generate_tickets,
+    iching_context_summary,
     score_numbers,
 )
 
@@ -99,6 +101,77 @@ class SimulationTests(unittest.TestCase):
             generate_iching_tickets(
                 DLT_RULE, target_date="2026-08-31", issue="not-a-number", count=5
             )
+
+    def test_iching_context_is_reproducible_and_each_input_affects_mapping(self) -> None:
+        base_inputs = {
+            "draw_time": "21:25",
+            "cast_at": "2026-09-07T10:30:00+08:00",
+            "lunar_birth_date": "1993-01-12",
+            "birth_time": "05:30",
+            "location": "上海市",
+            "latitude": 31.2304,
+            "longitude": 121.4737,
+            "direction": "东南",
+            "wealth_direction": "南",
+        }
+        context = IChingContext.create(**base_inputs)
+        baseline = generate_iching_tickets(
+            DLT_RULE,
+            target_date="2026-09-07",
+            issue="26102",
+            context=context,
+        )
+
+        self.assertEqual(
+            baseline,
+            generate_iching_tickets(
+                DLT_RULE,
+                target_date="2026-09-07",
+                issue="26102",
+                context=context,
+            ),
+        )
+        variants = {
+            "draw time": {"draw_time": "21:26"},
+            "cast time": {"cast_at": "2026-09-07T10:30:01+08:00"},
+            "lunar birth date": {"lunar_birth_date": "1993-01-13"},
+            "birth time": {"birth_time": "07:30"},
+            "location": {"location": "北京市"},
+            "coordinates": {"latitude": 39.9042, "longitude": 116.4074},
+            "direction": {"direction": "西北"},
+            "wealth direction": {"wealth_direction": "北"},
+        }
+        for label, changes in variants.items():
+            with self.subTest(label=label):
+                changed_context = IChingContext.create(**(base_inputs | changes))
+                self.assertNotEqual(
+                    baseline,
+                    generate_iching_tickets(
+                        DLT_RULE,
+                        target_date="2026-09-07",
+                        issue="26102",
+                        context=changed_context,
+                    ),
+                )
+
+    def test_iching_context_validates_coordinates_and_describes_missing_birth_time(self) -> None:
+        with self.assertRaisesRegex(ValueError, "latitude and longitude"):
+            IChingContext.create(
+                draw_time="21:15",
+                cast_at="2026-09-07T10:30:00+08:00",
+                latitude=31.2304,
+            )
+
+        context = IChingContext.create(
+            draw_time="21:15",
+            cast_at="2026-09-07T10:30:00+08:00",
+            lunar_birth_date="1993-01-12",
+        )
+        summary = iching_context_summary(context, target_date="2026-09-08")
+        self.assertIn("开奖 21:15（亥时）", summary)
+        self.assertIn("农历生辰 1993-01-12", summary)
+        self.assertIn("出生时辰 未提供（非完整八字）", summary)
+        self.assertIn("财位", summary)
 
 
 if __name__ == "__main__":

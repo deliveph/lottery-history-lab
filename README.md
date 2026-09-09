@@ -38,6 +38,14 @@ python -m lottery_lab generate --offline --mode coverage --seed 20260814
 python -m lottery_lab generate --offline --mode iching `
   --dlt-date 2026-08-31 --ssq-date 2026-09-01
 
+# 加入实际起卦时间、农历生辰、定位和朝向；经纬度必须成对提供
+python -m lottery_lab generate --offline --mode iching `
+  --dlt-date 2026-09-07 --ssq-date 2026-09-08 `
+  --cast-at 2026-09-07T10:30:00+08:00 `
+  --birth-lunar-date 1990-01-01 --birth-time 05:30 `
+  --location "上海市" --latitude 31.2304 --longitude 121.4737 `
+  --direction 东南
+
 # 改为各生成 8 组，并指定数据目录
 python -m lottery_lab run --count 8 --data-dir D:\lottery-data
 ```
@@ -76,17 +84,33 @@ CSV 使用 UTF-8 BOM，方便直接用 Excel 打开。程序只在明确执行 `
 
 ### `iching`（易经八卦娱乐模式）
 
-根据目标年月日与缓存中的下一期号，计算上卦、下卦和动爻，再使用八卦序数、
-五行尾数及变爻轮转形成抽样权重。程序同时平衡 5 注之间的号码使用次数，结果由
-目标日期和期号确定，可重复生成：
+基础调用根据目标年月日与缓存中的下一期号，计算上卦、下卦和动爻，再使用八卦
+序数、五行尾数及变爻轮转形成抽样权重。程序同时平衡5注之间的号码使用次数。
+
+CLI 还会把以下上下文加入卦数和随机种子，并在号码前完整打印归一化后的输入：
+
+- 大乐透官方开奖/直播时刻默认 `21:25`，双色球默认 `21:15`，二者都映射为亥时；
+- 实际起卦时间 `--cast-at`，省略时使用当前北京时间；
+- 农历生日 `--birth-lunar-date` 和可选出生时刻 `--birth-time`；
+- 地点名称、成对的经纬度和起卦朝向；
+- 财位 `--wealth-direction`，省略时按目标日期的卦象方向做娱乐映射。
+
+要复现上下文增强结果，必须把输出中的起卦时间再次传给 `--cast-at`：
 
 ```powershell
 python -m lottery_lab generate --offline --mode iching `
-  --dlt-date 2026-08-31 --ssq-date 2026-09-01
+  --dlt-date 2026-09-07 --ssq-date 2026-09-08 `
+  --cast-at 2026-09-07T10:30:00+08:00 `
+  --birth-lunar-date 1990-01-01 --location "上海市" --direction 东南
 ```
 
-这是自定义的娱乐性数字映射，不是传统术数断语，也没有统计预测依据。`iching`
-模式不会使用 `--seed`；相同目标日期、期号和游戏规则会产生相同结果。
+这是自定义的娱乐性数字映射，不是传统术数断语，也没有统计预测依据。只有农历
+生日、没有出生时刻时不构成完整八字，程序会明确标注。`iching` 模式不会使用
+`--seed`；相同目标日期、期号和完整上下文会产生相同结果。省略全部上下文直接调用
+Python 生成函数时，仍保留原有日期＋期号的结果，兼容已有调用。
+
+开奖时刻依据[中国体育彩票调整公告](https://m.lottery.gov.cn/xxgk/tzggz/20221220/10027143.html)
+和[中彩网开奖直播页](https://www.zhcw.com/spzb/kjzb/fczb/)。
 
 ## 数据源
 
