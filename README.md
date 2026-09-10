@@ -19,6 +19,16 @@
 
 ## 使用
 
+当前用户约定采用[固定10元分散单式规则](docs/selection-rules.md)：每种彩票5注，
+双色球红球跨注不重叠且蓝球各不相同，大乐透分散前区和后区号码对。按约定执行：
+
+```powershell
+python -m lottery_lab run --mode coverage --count 5 --seed 20260910
+```
+
+种子为复现示例；实际参数和输出须在开奖前保存到每日日志。CLI本身默认模式仍是
+`weighted`，以下保留其他模式的使用示例。
+
 在本项目目录运行：
 
 ```powershell

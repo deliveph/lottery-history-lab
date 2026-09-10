@@ -5,6 +5,8 @@
 1. 阅读 `docs/conversations/README.md`。
 2. 阅读 `docs/conversations/` 中日期最新的一份日志。
 3. 涉及历史结果、目标期次或中奖核对时，必须先从官方接口更新或查询数据，不能仅依赖旧日志。
+4. 生成候选号码前阅读 `docs/selection-rules.md`，默认遵守每种彩票10元、5注分散单式规则。
+   使用现有程序时显式指定 `--mode coverage --count 5`；用户未另行指定时不回退到起卦或历史加权。
 
 ## 每日对话日志
 
